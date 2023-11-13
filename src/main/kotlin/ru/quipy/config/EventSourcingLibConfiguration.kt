@@ -4,9 +4,11 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import ru.quipy.api.ProjectAggregate
+import ru.quipy.api.aggregate.ProjectAggregate
+import ru.quipy.api.aggregate.UserAggregate
 import ru.quipy.core.EventSourcingServiceFactory
-import ru.quipy.logic.ProjectAggregateState
+import ru.quipy.logic.state.ProjectAggregateState
+import ru.quipy.logic.state.UserAggregateState
 import ru.quipy.projections.AnnotationBasedProjectEventsSubscriber
 import ru.quipy.streams.AggregateEventStreamManager
 import ru.quipy.streams.AggregateSubscriptionsManager
@@ -27,9 +29,9 @@ import javax.annotation.PostConstruct
  * private lateinit var aggregateRegistry: AggregateRegistry
  *
  * aggregateRegistry.register(ProjectAggregate::class, ProjectAggregateState::class) {
- *     registerStateTransition(TagCreatedEvent::class, ProjectAggregateState::tagCreatedApply)
- *     registerStateTransition(TaskCreatedEvent::class, ProjectAggregateState::taskCreatedApply)
- *     registerStateTransition(TagAssignedToTaskEvent::class, ProjectAggregateState::tagAssignedApply)
+ *     registerStateTransition(ProjectStatusAddedEvent::class, ProjectAggregateState::statusCreatedApply)
+ *     registerStateTransition(ProjectTaskCreatedEvent::class, ProjectAggregateState::taskCreatedApply)
+ *     registerStateTransition(ProjectTaskStatusChangedEvent::class, ProjectAggregateState::statusAssignedApply)
  * }
  * ```
  */
@@ -55,6 +57,9 @@ class EventSourcingLibConfiguration {
      */
     @Bean
     fun projectEsService() = eventSourcingServiceFactory.create<UUID, ProjectAggregate, ProjectAggregateState>()
+
+    @Bean
+    fun userEsService() = eventSourcingServiceFactory.create<UUID, UserAggregate, UserAggregateState>()
 
     @PostConstruct
     fun init() {

@@ -16,23 +16,34 @@ import ru.quipy.logic.state.ProjectAggregateState
 import ru.quipy.logic.state.StatusEntity
 import ru.quipy.logic.state.TaskEntity
 import ru.quipy.logic.state.UserAggregateState
+import ru.quipy.projections.ProjectEntity
+import ru.quipy.projections.Status
+import ru.quipy.projections.Task
+import ru.quipy.projections.UserAccount
+import ru.quipy.service.ProjectService
 import java.util.*
 
 @RestController
 @RequestMapping("/projects")
 class ProjectController(
     val projectEsService: EventSourcingService<UUID, ProjectAggregate, ProjectAggregateState>,
-    val userEsService: EventSourcingService<UUID, UserAggregate, UserAggregateState>
+    val userEsService: EventSourcingService<UUID, UserAggregate, UserAggregateState>,
+    val projectService: ProjectService
 ) {
 
     @PostMapping("/{projectTitle}")
     fun createProject(@PathVariable projectTitle: String, @RequestParam creatorId: UUID) : ProjectCreatedEvent {
-        return projectEsService.create { it.create(UUID.randomUUID(), projectTitle, creatorId) }
+        val projectId = UUID.randomUUID()
+        val project = projectEsService.create { it.create(projectId, projectTitle, creatorId) }
+        userEsService.update(creatorId) {
+            it.addProject(projectId)
+        }
+        return project
     }
 
     @GetMapping("/{projectId}")
-    fun getProject(@PathVariable projectId: UUID) : ProjectAggregateState? {
-        return projectEsService.getState(projectId)
+    fun getProject(@PathVariable projectId: UUID) : ProjectEntity {
+        return projectService.getProject(projectId)
     }
 
     @PostMapping("/{projectId}/tasks/{taskName}")
@@ -77,7 +88,15 @@ class ProjectController(
     }
 
     @DeleteMapping("/{projectId}/status")
-    fun deleteStatus(@PathVariable projectId: UUID, @RequestParam statusId: UUID) : ProjectStatusDeletedEvent {
+    fun deleteStatus(@PathVariable projectId: UUID, @RequestParam statusId: UUID) : ProjectStatusDeletedEvent? {
+        if (projectService.checkDeleteStatusDefault(statusId)) {
+            return null
+        }
+
+        if (projectService.checkDeleteStatusUsage(statusId, projectId)) {
+            return null
+        }
+
         return projectEsService.update(projectId) {
             it.projectStatusDelete(statusId)
         }
@@ -91,34 +110,28 @@ class ProjectController(
     }
 
     @GetMapping("/{projectId}/members")
-    fun getProjectMembers(@PathVariable projectId: UUID): MutableMap<UUID, UUID>? {
-        val projectData = projectEsService.getState(projectId)
-        return projectData?.members
+    fun getProjectMembers(@PathVariable projectId: UUID): MutableSet<UUID> {
+        return projectService.getProjectMembers(projectId)
     }
 
     @GetMapping("/{projectId}/tasks")
-    fun getProjectTasks(@PathVariable projectId: UUID): MutableMap<UUID, TaskEntity>? {
-        val projectData = projectEsService.getState(projectId)
-        return projectData?.tasks
+    fun getProjectTasks(@PathVariable projectId: UUID): MutableMap<UUID, Task> {
+        return projectService.getProjectTasks(projectId)
     }
 
     @GetMapping("/{projectId}/statuses")
-    fun getProjectStatuses(@PathVariable projectId: UUID): MutableMap<UUID, StatusEntity>? {
-        val projectData = projectEsService.getState(projectId)
-        return projectData?.projectStatuses
+    fun getProjectStatuses(@PathVariable projectId: UUID): MutableMap<UUID, Status> {
+        return projectService.getProjectStatuses(projectId)
     }
 
     @GetMapping("/{projectId}/found_member")
-    fun getProjectUserByName(@PathVariable projectId: UUID, @RequestParam name: String): MutableSet<UserAggregateState>? {
-        val foundedUsers = mutableSetOf<UserAggregateState>()
-        val projectData = projectEsService.getState(projectId)
+    fun getProjectUserByName(@PathVariable projectId: UUID, @RequestParam name: String): MutableSet<UserAccount> {
+        return projectService.getProjectUserByName(projectId, name)
+    }
 
-        projectData?.members?.keys?.forEach{
-            val userData = userEsService.getState(it);
-            if (userData?.userName?.contains(name, false) == true) {
-                foundedUsers.add(userData)
-            }
-        }
-        return foundedUsers
+
+    @GetMapping("/all")
+    fun getAllProjects(): MutableList<ProjectEntity> {
+        return projectService.getAllProjects()
     }
 }

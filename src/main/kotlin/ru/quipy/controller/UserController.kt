@@ -13,6 +13,7 @@ import ru.quipy.logic.commands.addProject
 import ru.quipy.logic.state.UserAggregateState
 import ru.quipy.logic.commands.changeName
 import ru.quipy.logic.commands.create
+import ru.quipy.projections.UserAccount
 import ru.quipy.service.UserService
 import java.util.*
 
@@ -29,8 +30,8 @@ class UserController(
     }
 
     @GetMapping("/{userId}")
-    fun getUser(@PathVariable userId: UUID) : UserAggregateState? {
-        return userEsService.getState(userId)
+    fun getUser(@PathVariable userId: UUID) : UserAccount {
+        return userService.getUser(userId)
     }
 
     @PostMapping("/{userId}/name")
@@ -48,38 +49,22 @@ class UserController(
     }
 
     @GetMapping("/{userId}/projects")
-    fun getUserProjects(@PathVariable userId: UUID): MutableMap<UUID, UUID>? {
-        val userData = userEsService.getState(userId)
-        return userData?.projects
+    fun getUserProjects(@PathVariable userId: UUID): MutableSet<UUID> {
+        return userService.getUserProjects(userId)
     }
 
     @GetMapping("/all")
-    fun getAllUsers(): MutableSet<String> {
-        return userService.getAllUsersName()
+    fun getAllUsers(): MutableList<UserAccount> {
+        return userService.getAllUsers()
     }
 
     @GetMapping("/check")
     fun checkUserName(@RequestParam name: String): String {
-        val usersNames = userService.getAllUsersName()
-        if (usersNames.contains(name))
-            return "User with this name already exist"
-        return "This name not used"
+        return userService.checkUserName(name)
     }
 
     @GetMapping("/find")
-    fun findUser(@RequestParam name: String): MutableSet<UserAggregateState?> {
-        val usersAll = userService.getAllUsers()
-        val usersFound = mutableSetOf<UserAggregateState?>()
-        val usersIdSet = mutableSetOf<UUID>()
-        usersAll.forEach{
-            if (it.userName.contains(name, true))
-                usersIdSet.add(it.userId)
-        }
-
-        usersIdSet.forEach{
-            usersFound.add(userEsService.getState(it))
-        }
-
-        return usersFound
+    fun findUser(@RequestParam name: String): MutableSet<UserAccount> {
+        return userService.findUser(name)
     }
 }

@@ -24,7 +24,6 @@ import javax.annotation.PostConstruct
 @Component
 class UserCache (
     private val userAccountCacheRepository: UserAccountCacheRepository,
-    private val userEsService: EventSourcingService<UUID, UserAggregate, UserAggregateState>
 ) {
 
     val logger: Logger = LoggerFactory.getLogger(UserCache::class.java)
@@ -43,7 +42,6 @@ class UserCache (
             `when`(UserNameChangedEvent::class) { event ->
                 val user = userAccountCacheRepository.findById(event.userId).get()
                 user.userName = event.userName
-                userAccountCacheRepository.deleteById(event.userId)
                 userAccountCacheRepository.save(user)
                 logger.info("User {} changed name to {}", event.userId, event.userName)
             }
@@ -51,20 +49,10 @@ class UserCache (
             `when`(UserProjectAddedEvent::class) { event ->
                 val user = userAccountCacheRepository.findById(event.userId).get()
                 user.projects.add(event.projectId)
-                userAccountCacheRepository.deleteById(event.userId)
                 userAccountCacheRepository.save(user)
                 logger.info("User {} added to project {}", event.userId, event.projectId)
             }
         }
-/*        subscriptionsManager.createSubscriber(ProjectAggregate::class, "some-second-meaningful-name") {
-            `when`(ProjectCreatedEvent::class) { event ->
-                val user = userAccountCacheRepository.findById(event.creatorId).get()
-                user.projects.add(event.projectId)
-                userAccountCacheRepository.deleteById(event.creatorId)
-                userAccountCacheRepository.save(user)
-                logger.info("Project created: {} by user {}", event.title, event.creatorId)
-            }
-        }*/
     }
 }
 

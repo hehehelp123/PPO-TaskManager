@@ -23,8 +23,6 @@ import javax.annotation.PostConstruct
 @Component
 class ProjectCache (
     private val projectCacheRepository: ProjectCacheRepository,
-    private val userAccountCacheRepository: UserAccountCacheRepository,
-    val userEsService: EventSourcingService<UUID, UserAggregate, UserAggregateState>
 ) {
 
     val logger: Logger = LoggerFactory.getLogger(ProjectCache::class.java)
@@ -48,7 +46,6 @@ class ProjectCache (
                 val project = projectCacheRepository.findById(event.projectId).get()
                 val task = Task(event.taskId, event.taskName, UUID.fromString("00000000-0000-0000-0000-000000000000"))
                 project.tasks[event.taskId] = task
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("Task created: {}", event.taskName)
             }
@@ -57,7 +54,6 @@ class ProjectCache (
                 val project = projectCacheRepository.findById(event.projectId).get()
                 val status = Status(event.statusId, event.statusName, event.statusColor)
                 project.projectStatuses[event.statusId] = status
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("Status created: {} with color {}", event.statusName, event.statusColor)
             }
@@ -66,7 +62,6 @@ class ProjectCache (
                 val project = projectCacheRepository.findById(event.projectId).get()
                 val task = project.tasks[event.taskId]
                 task?.statusAssigned = event.statusId
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("Status {} assigned to task {}: ", event.statusId, event.taskId)
             }
@@ -74,7 +69,6 @@ class ProjectCache (
             `when`(ProjectMemberAddedEvent::class) { event ->
                 val project = projectCacheRepository.findById(event.projectId).get()
                 project.members.add(event.memberId)
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("User {} added to project {}: ", event.memberId, event.projectId)
             }
@@ -82,7 +76,6 @@ class ProjectCache (
             `when`(ProjectTitleChangedEvent::class) { event ->
                 val project = projectCacheRepository.findById(event.projectId).get()
                 project.projectTitle = event.title
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("Project {} changed title to {}: ", event.projectId, event.title)
             }
@@ -90,7 +83,6 @@ class ProjectCache (
             `when`(ProjectStatusDeletedEvent::class) { event ->
                 val project = projectCacheRepository.findById(event.projectId).get()
                 project.projectStatuses.keys.remove(event.statusId)
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("Status {} deleted from project {}: ", event.statusId, event.projectId)
             }
@@ -99,7 +91,6 @@ class ProjectCache (
                 val project = projectCacheRepository.findById(event.projectId).get()
                 val task = project.tasks[event.taskId]
                 task?.membersAssigned?.add(event.memberId)
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("User {} assigned to task {}: ", event.memberId, event.taskId)
             }
@@ -108,7 +99,6 @@ class ProjectCache (
                 val project = projectCacheRepository.findById(event.projectId).get()
                 val task = project.tasks[event.taskId]
                 task?.title = event.title
-                projectCacheRepository.deleteById(project.projectId)
                 projectCacheRepository.save(project)
                 logger.info("Task {} changed title to {}: ", event.taskId, event.title)
             }

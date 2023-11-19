@@ -13,12 +13,15 @@ import ru.quipy.logic.commands.addProject
 import ru.quipy.logic.state.UserAggregateState
 import ru.quipy.logic.commands.changeName
 import ru.quipy.logic.commands.create
+import ru.quipy.projections.UserAccount
+import ru.quipy.service.UserService
 import java.util.*
 
 @RestController
 @RequestMapping("/users")
 class UserController(
-    val userEsService: EventSourcingService<UUID, UserAggregate, UserAggregateState>
+    val userEsService: EventSourcingService<UUID, UserAggregate, UserAggregateState>,
+    val userService: UserService
 ) {
 
     @PostMapping()
@@ -27,8 +30,8 @@ class UserController(
     }
 
     @GetMapping("/{userId}")
-    fun getUser(@PathVariable userId: UUID) : UserAggregateState? {
-        return userEsService.getState(userId)
+    fun getUser(@PathVariable userId: UUID) : UserAccount {
+        return userService.getUser(userId)
     }
 
     @PostMapping("/{userId}/name")
@@ -37,10 +40,31 @@ class UserController(
             it.changeName(name)
         }
     }
+
     @PostMapping("/{userId}/projects")
     fun addProject(@PathVariable userId: UUID, @RequestParam projectId: UUID) : UserProjectAddedEvent {
         return userEsService.update(userId) {
             it.addProject(projectId)
         }
+    }
+
+    @GetMapping("/{userId}/projects")
+    fun getUserProjects(@PathVariable userId: UUID): MutableSet<UUID> {
+        return userService.getUserProjects(userId)
+    }
+
+    @GetMapping("/all")
+    fun getAllUsers(): MutableList<UserAccount> {
+        return userService.getAllUsers()
+    }
+
+    @GetMapping("/check")
+    fun checkUserName(@RequestParam name: String): String {
+        return userService.checkUserName(name)
+    }
+
+    @GetMapping("/find")
+    fun findUser(@RequestParam name: String): MutableSet<UserAccount> {
+        return userService.findUser(name)
     }
 }
